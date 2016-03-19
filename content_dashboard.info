@@ -1,0 +1,6 @@
+name = Content Dashboard
+description = This module will help in importing content from one server to another server.
+package = Content Dashboard
+core = 7.x
+version = 2.x
+configure = admin/config/people/age_checker

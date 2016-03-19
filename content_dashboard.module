@@ -1,0 +1,46 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function content_dashboard_menu() {
+
+  $items['admin/config/content-dashboard'] = array(
+    'title' => 'Content Dashboard',
+    'description' => 'Content Dashboard Configuration',
+    'access arguments' => array('administrator dashboard access'),
+    'position' => 'right',
+    'weight' => -15,
+    'page callback' => 'system_admin_menu_block_page',
+    'file' => 'system.admin.inc',
+    'file path' => drupal_get_path('module', 'system'),
+  );
+
+  $items['admin/config/content-dashboard/sync-settings'] = array(
+    'title' => 'Sync Settings',
+    'access arguments' => array('administrator dashboard access'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('content_dashboard_sync_settings'),
+    'file' => 'content_dashboard.admin.inc',
+    'type' => MENU_NORMAL_ITEM,
+    'description' => 'Content Dashboard sync settings.',
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function content_dashboard_permission() {
+  return array(
+    'administrator dashboard access' =>  array(
+      'title' => t('Content Dashboard Admin Access'),
+      'description' => t('Access the admin configuration of Content Dashboard'),
+    ),
+    'import content' =>  array(
+      'title' => t('Access to import the content'),
+      'description' => t('Access to import the content on the site'),
+    ),
+  );
+}
