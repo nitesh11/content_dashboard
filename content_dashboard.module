@@ -18,14 +18,23 @@ function content_dashboard_menu() {
 
   $items['admin/config/content-dashboard/sync-settings'] = array(
     'title' => 'Sync Settings',
+    'description' => 'Content Dashboard sync settings.',
     'access arguments' => array('administrator dashboard access'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('content_dashboard_sync_settings'),
     'file' => 'content_dashboard.admin.inc',
     'type' => MENU_NORMAL_ITEM,
-    'description' => 'Content Dashboard sync settings.',
   );
 
+  $items['admin/config/content-dashboard/config-form'] = array(
+    'title' => 'Server Configuration',
+    'description' => 'Content Dashboard Server configuration',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('content_dashboard_config_form'),
+    'access arguments' => array('administrator dashboard access'),
+    'file' => 'content_dashboard.admin.inc',
+    'type' => MENU_NORMAL_ITEM,
+  );
   return $items;
 }
 
