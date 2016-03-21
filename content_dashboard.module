@@ -1,5 +1,7 @@
 <?php
 
+module_load_include('inc', 'content_dashboard', 'content_dashboard_functionalities');
+
 /**
  * Implements hook_menu().
  */
@@ -35,6 +37,15 @@ function content_dashboard_menu() {
     'file' => 'content_dashboard.admin.inc',
     'type' => MENU_NORMAL_ITEM,
   );
+
+  $items['admin/content/content-dashboard/new'] = array(
+    'title' => 'Content Dashboard',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('content_dashboard_new_content', "article"),
+    'access arguments' => array('import content'),
+    'type' => MENU_LOCAL_TASK | MENU_NORMAL_ITEM,
+    'expanded' => TRUE,
+  );
   return $items;
 }
 
@@ -52,4 +63,98 @@ function content_dashboard_permission() {
       'description' => t('Access to import the content on the site'),
     ),
   );
+}
+
+/**
+ *
+ * We hit the server, and retrieve the list of all nodes which has been published and are ready to be imported.
+ * During the filter, we remove the content which has already been imported by comparing uuids.
+ * @return [type] [description]
+ */
+function content_dashboard_new_content($form, &$form_state, $type) {
+  drupal_add_js(drupal_get_path('module', 'content_dashboard') . '/content_dashboard.js');
+  // drupal_add_js(drupal_get_path('module', 'tablesorter').'/tablesortervar.js');
+  $server_url = variable_get('content_dashboard_server_url');
+  if (!$server_url) {
+    drupal_set_message(t('Server Url is not setup for fetching content. You can configure it ') . l(t('here') , 'admin/config/content-dashboard/config-form') . '.', 'warning');
+  }
+  else {
+    $form = array();
+    $client_uuid = array();
+    $options = array();
+    $cookie = retrieve_session_cookie();
+    if ($cookie == FALSE) {
+      return;
+    }
+    $node_types = node_type_get_types();
+    $content_types = array();
+    foreach ($node_types as $node_type) {
+      $content_types = array_merge($content_types, array($node_type->type => $node_type->name  . ' (' . get_new_node_count($node_type->type, $server_url, $cookie) . ')' ));
+    }
+
+    // asort($content_types);
+    $form['content_type_select'] = array(
+      '#type' => 'select',
+      '#options' => $content_types,
+      '#required' => TRUE,
+      '#default_value' => $type,
+    );
+
+    $header = array(
+      'linked_title' => array('data' => t('Title'),'field' => 'linked_title'),
+      // 'language' => array('data' => t('Language'), 'field' => 'language'),
+      'created_at' => array('data' => t('Created At'),'field' => 'created_at'),
+      'changed_at' => array('data' => t('Updated At'),'field' => 'changed_at'),
+    );
+    $form['table'] = array(
+      '#type' => 'tableselect',
+      '#header' => $header,
+      '#empty' => t('No content available.'),
+    );
+    $form['table']['#attributes']['data-tablesorter-id'] = 'content-dashboard-new-table';
+    // $form['table']['#attributes']['class'][] = 'tablesorter';
+    $form["cookie"] = array(
+      '#type' => "hidden",
+      '#value' => $cookie,
+    );
+
+    // List of all the content on the server which are in published state.
+    $language = explode(',', variable_get('content_dashboard_server_language', ''));
+    $basic_node_list = array();
+    foreach ($language as $lang) {
+      $temp = drupal_json_decode(get_basic_node_info($type, $cookie, $lang)->data);
+      $basic_node_list = array_merge($basic_node_list,$temp);
+    }
+
+    // List of all the UUID's on the client side.
+    $query = db_select("node", "n")->fields("n", array("uuid"))->condition("type", $type)->execute();
+    while ($row = $query->fetchField()) {
+      $client_uuid[] = $row;
+    }
+
+    // List all the new content which can be imported on the client side.
+    if (!empty($basic_node_list)) {
+      foreach ($basic_node_list as $key => $node) {
+        if (!empty($client_uuid) && in_array($node["uuid"], $client_uuid)) {
+          unset($basic_node_list[$key]);
+          continue;
+        }
+        $options[$node["uuid"]]["linked_title"] = l($node["title"], preg_replace('/' . preg_quote($server_url, '/') . '\/test\//', $server_url. '/', $node["uri"], 1));
+        $options[$node["uuid"]]["created_at"] = date('Y-m-d H:i:s', $node["created"]);
+        $options[$node["uuid"]]["changed_at"] = date('Y-m-d H:i:s', $node["changed"]);
+        // $options[$node["uuid"]]["language"] = $node["language"];
+      }
+    }
+    $form['table']['#options'] = $options;
+    $form['actions'] = array('#type' => 'actions');
+    $form['actions']['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Import'),
+    );
+    $form['content_type'] = array(
+      '#type'=> "hidden",
+      '#value'=> $type
+    );
+  }
+  return $form;
 }
