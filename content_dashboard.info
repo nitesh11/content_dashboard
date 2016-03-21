@@ -4,3 +4,5 @@ package = Content Dashboard
 core = 7.x
 version = 2.x
 configure = admin/config/people/age_checker
+
+dependencies[] = uuid
