@@ -167,3 +167,53 @@ function content_dashboard_new_content($form, &$form_state, $type) {
   }
   return $form;
 }
+
+
+function content_dashboard_new_content_submit($form, &$form_state) {
+  global $base_url;
+  $server_url = variable_get('content_dashboard_server_url');
+  $unique = array_unique($form_state["values"]["table"]);
+  if (empty($unique) || (count($unique) == 1 && array_shift(array_values($unique)) == '0')) {
+    drupal_set_message(t("Please select some content to import"), 'warning', FALSE);
+  }
+  else {
+    $fields = field_info_instances('node', $form['content_type']['#value']);
+    $mapping = array('uuid', 'type', 'title', 'name', 'language', 'created', 'uid', 'status');
+    foreach ($fields as $field_key => $field_value) {
+      $mapping[] = $field_key;
+    }
+
+    // Creating a replica of the node on the client side.
+    foreach ($form_state["values"]["table"] as $uuid) {
+      if ($uuid) {
+        $url = $server_url . '/test/node/' . $uuid;
+        $options = array('method' => 'GET');
+        $options['headers']['Cookie'] = $form_state["values"]["cookie"];
+        $nodes[] = drupal_json_decode(drupal_http_request($url, $options)->data);
+      }
+    }
+    foreach ($nodes as $node) {
+      $new_node = new stdClass();
+      foreach ($mapping as $key) {
+        $new_node->$key = $node[$key];
+      }
+
+      $new_node->content_dashboard_sync = $node["changed"];
+      $new_node->promote = 0;
+
+      // Saving the $new_node object on the client side.
+      node_save($new_node);
+
+      $default_language = language_default('language');
+
+      if($default_language === $new_node->language || $new_node->language === 'und') {
+          $article_url = $base_url . '/' . drupal_get_path_alias('node/' . $new_node->nid);
+      }
+      else {
+        $article_url = $base_url . '/' . $new_node->language . '/' . drupal_get_path_alias('node/' . $new_node->nid, $new_node->language);
+      }
+      drupal_set_message('The content link after import  -: <a href=' . $article_url . '>' . $new_node->title . '</a>');
+    }
+    drupal_set_message(t("The content has been imported successfully, and has already been published."), 'status', FALSE);
+  }
+}
