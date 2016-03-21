@@ -1,0 +1,16 @@
+<?php
+
+/**
+ * Implements hook_install().
+ */
+function content_dashboard_install() {
+
+  // Add the new field to the node table for saying the syncing time.
+  $field_sync = array(
+    'description' => 'Saves the server timestamp of content when last updated',
+    'type' => 'int',
+    'unsigned' => TRUE
+  );
+
+  db_add_field('node', 'content_dashboard_sync', $field_sync);
+}
