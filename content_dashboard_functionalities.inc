@@ -39,7 +39,7 @@ function get_new_node_count($type, $server_url, $cookie) {
 
   foreach ($language as $lang) {
     $temp = drupal_json_decode(get_basic_node_info($type, $cookie, $lang)->data);
-    $basic_node_list = array_merge($basic_node_list,$temp);
+    $basic_node_list = array_merge($basic_node_list, $temp);
   }
 
   $query = db_select("node", "n")
@@ -95,8 +95,8 @@ function add_taxonomy_term($term_uuid, $options, $server_url) {
   );
 
   // Check if the term already exists or not.
-  $tid = db_select('taxonomy_term_data', 't')
-    ->fields('t', array('tid'))
+  $tid = db_select('taxonomy_term_data', 'taxonomy')
+    ->fields('taxonomy', array('tid'))
     ->condition('uuid', $term_uuid)
     ->execute()->fetchField();
 
@@ -128,7 +128,7 @@ function add_taxonomy_term($term_uuid, $options, $server_url) {
 }
 
 /*
- * Creating/Updating the taxonomy.
+ * Saving the Taxonomy terms.
  */
 function content_dashboard_taxonomy_term_save($term) {
   if(isset($term->name) && !empty($term->name) && strlen($term->name)>0){
@@ -137,4 +137,59 @@ function content_dashboard_taxonomy_term_save($term) {
   else {
     drupal_set_message(t("Can't save term"), 'error', FALSE);
   }
+}
+
+/*
+ * Importing the Files from Server to Client.
+ */
+function content_dashboard_file_sync($file_uuid, $options, $server_url) {
+  $file_details = drupal_json_decode(drupal_http_request($server_url . '/test/file/' . $file_uuid, $options)->data);
+
+  if ($file_details) {
+    $items = db_select('file_managed', 'file')
+      ->fields('file', array('fid'))
+      ->condition('file.uuid', $file_uuid)
+      ->execute()->fetchObject();
+
+    if (is_object($items)) {
+
+      // Loading the File if the file exists.
+      $file = file_load($items->fid);
+    }
+    else {
+
+      // Creating a file object.
+      $file = new stdClass();
+
+      $file->filesize = 0;
+      $file->uri = $file_details["uri"];
+      $file->uid = 1;
+      if (strpos($file_details["uri"], "public://") === 0) {
+        $url = file_url($server_url . '/sites/default/files/' . str_replace("public://","", $file_details["uri"]));
+        $data = file_get_contents($url);
+        $file = file_save_data($data, $file_details["uri"]);
+      }
+
+      $file->filename = $file_details["filename"];
+      $file->filemime = $file_details["filemime"];
+      $file->uuid = $file_details["uuid"];
+      $file->status = 1;
+      file_save($file);
+    }
+
+    // Convert File Object to File array.
+    $file = get_object_vars($file);
+    return $file;
+  }
+}
+
+/*
+ * Get the url of the file.
+ */
+function file_url($url){
+  $parts = parse_url($url);
+  $path_parts = array_map('rawurldecode', explode('/', $parts['path']));
+
+  $file_path = $parts['scheme'] . '://' . $parts['host'] . implode('/', array_map('rawurlencode', $path_parts));
+  return $file_path;
 }

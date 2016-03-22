@@ -208,13 +208,25 @@ function content_dashboard_new_content_submit($form, &$form_state) {
 
         // Importing Taxonomy terms.
         if ($value == 'taxonomy_term_reference') {
-          foreach ($node[$key]["und"] as &$term_array) {
-            foreach ($term_array as &$term_uuid) {
-              $term_uuid = add_taxonomy_term($term_uuid, $options, $server_url);
+          if (count($node[$key])) {
+            foreach ($node[$key][LANGUAGE_NONE] as &$term_array) {
+              foreach ($term_array as &$term_uuid) {
+                $term_uuid = add_taxonomy_term($term_uuid, $options, $server_url);
+              }
             }
           }
         }
+
         $new_node->$key = $node[$key];
+
+        // Importing Images.
+        if ($value == 'image') {
+          $count = 0;
+          foreach ($node[$key][LANGUAGE_NONE] as &$image_array) {
+            $images_of_node[] = content_dashboard_file_sync($image_array['uuid'], $options, $server_url);
+          }
+          $new_node->{$key}[LANGUAGE_NONE] = $images_of_node;
+        }
       }
 
       $new_node->content_dashboard_sync = $node["changed"];
