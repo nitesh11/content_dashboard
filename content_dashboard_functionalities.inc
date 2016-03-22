@@ -32,14 +32,16 @@ function retrieve_session_cookie() {
  * Get the Node count of the content type.
  */
 function get_new_node_count($type, $server_url, $cookie) {
-  $client_uuid = array();
   $count = 0;
-  $language = explode(',', variable_get('content_dashboard_server_language', ''));
+  $client_uuid = array();
   $basic_node_list = array();
+  $language = explode(',', variable_get('content_dashboard_server_language', ''));
+
   foreach ($language as $lang) {
     $temp = drupal_json_decode(get_basic_node_info($type, $cookie, $lang)->data);
     $basic_node_list = array_merge($basic_node_list,$temp);
   }
+
   $query = db_select("node", "n")
     ->fields("n", array("uuid"))
     ->condition("type", $type)
@@ -75,4 +77,64 @@ function get_basic_node_info($type, $cookie, $language) {
   $options = array('method' => 'GET');
   $options['headers']['Cookie'] = $cookie;
   return drupal_http_request($full_url, $options);
+}
+
+/*
+ * Importing taxonomy terms.
+ */
+function add_taxonomy_term($term_uuid, $options, $server_url) {
+
+  $term_details = drupal_json_decode(drupal_http_request($server_url . '/test/taxonomy_term/' . $term_uuid, $options)->data);
+
+  // Mapping array for Taxonomy terms.
+  $mapping = array(
+    "name" => "name",
+    "description" => "description",
+    "uuid" => "uuid",
+    "format" => "format",
+  );
+
+  // Check if the term already exists or not.
+  $tid = db_select('taxonomy_term_data', 't')
+    ->fields('t', array('tid'))
+    ->condition('uuid', $term_uuid)
+    ->execute()->fetchField();
+
+  // Load the term if the term exists.
+  if ($tid) {
+    $term = taxonomy_term_load($tid);
+  }
+  else {
+    $term = new stdClass();
+  }
+
+  // Updating the terms.
+  foreach($mapping as $key) {
+    $term->$key = $term_details[$key];
+  }
+
+  $term->vocabulary_machine_name = $term_details["vocabulary_machine_name"];
+
+  // Getting the vocab ID on the client side.
+  $vocab_id = db_select('taxonomy_vocabulary', 'vocab')
+    ->fields('vocab', array('vid'))
+    ->condition('machine_name', $term_details["vocabulary_machine_name"])
+    ->execute()->fetchObject();
+
+  $term->vid = $vocab_id->vid;
+
+  content_dashboard_taxonomy_term_save($term);
+  return $term->tid;
+}
+
+/*
+ * Creating/Updating the taxonomy.
+ */
+function content_dashboard_taxonomy_term_save($term) {
+  if(isset($term->name) && !empty($term->name) && strlen($term->name)>0){
+    taxonomy_term_save($term);
+  }
+  else {
+    drupal_set_message(t("Can't save term"), 'error', FALSE);
+  }
 }

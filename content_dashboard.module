@@ -178,9 +178,19 @@ function content_dashboard_new_content_submit($form, &$form_state) {
   }
   else {
     $fields = field_info_instances('node', $form['content_type']['#value']);
-    $mapping = array('uuid', 'type', 'title', 'name', 'language', 'created', 'uid', 'status');
+    $mapping = array(
+      'uuid' => 'uuid',
+      'type' => 'type',
+      'title' => 'title',
+      'name' => 'name',
+      'language' => 'language',
+      'created' => 'created',
+      'uid' => 'uid',
+      'status' => 'status'
+    );
     foreach ($fields as $field_key => $field_value) {
-      $mapping[] = $field_key;
+      $field_instance = field_info_field($field_key);
+      $mapping[$field_key] = $field_instance['type'];
     }
 
     // Creating a replica of the node on the client side.
@@ -194,7 +204,16 @@ function content_dashboard_new_content_submit($form, &$form_state) {
     }
     foreach ($nodes as $node) {
       $new_node = new stdClass();
-      foreach ($mapping as $key) {
+      foreach ($mapping as $key => $value) {
+
+        // Importing Taxonomy terms.
+        if ($value == 'taxonomy_term_reference') {
+          foreach ($node[$key]["und"] as &$term_array) {
+            foreach ($term_array as &$term_uuid) {
+              $term_uuid = add_taxonomy_term($term_uuid, $options, $server_url);
+            }
+          }
+        }
         $new_node->$key = $node[$key];
       }
 
