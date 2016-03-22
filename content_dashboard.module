@@ -50,7 +50,7 @@ function content_dashboard_menu() {
   $items['admin/content/content-dashboard/new/%'] = array(
     'title' => 'Content Dashboard',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('content_dashboard_new_content',4),
+    'page arguments' => array('content_dashboard_new_content', 4),
     'access arguments' => array('import content'),
     'type' => MENU_LOCAL_TASK | MENU_CALLBACK,
     'expanded' => TRUE,
