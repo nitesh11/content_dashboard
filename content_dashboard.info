@@ -3,6 +3,6 @@ description = This module will help in importing content from one server to anot
 package = Content Dashboard
 core = 7.x
 version = 2.x
-configure = admin/config/people/age_checker
+configure = admin/config/content-dashboard
 
 dependencies[] = uuid

@@ -12,12 +12,12 @@ function retrieve_session_cookie() {
   $options = array(
     'method' => 'POST',
     'headers' => array('Content-Type' => 'application/json'),
-    'data' => $login_details ,
+    'data' => $login_details,
   );
 
-  $result = drupal_json_decode(drupal_http_request($url,$options)->data);
+  $result = drupal_json_decode(drupal_http_request($url, $options)->data);
   if (empty($result) || (isset($result[0]) && $result[0] == 'Wrong username or password.')) {
-    drupal_set_message(t('Server Url is not setup for fetching content. You can configure it ') . l(t('Here') , 'admin/config/content-dashboard/config_form') . '.', 'warning');
+    drupal_set_message(t('Server Url is not setup for fetching content. You can configure it ') . l(t('here') , 'admin/config/content-dashboard/config-form') . '.', 'warning');
     return FALSE;
   }
   else {
